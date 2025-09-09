@@ -135,46 +135,38 @@ print(f"Generated {len(raw_amps)} valid waveforms.")
 
 print("Step II: Creating sparse grids and interpolating...")
 
-sparse_freq_amp = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=1.3)
+# Higher power corresponds to finer spacing at low frequencies and 
+# low power corresponds to finer spacing at high frequencies.
+sparse_freq_amp = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=0.3) 
 sparse_freq_phase = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=4/3)
 
 A_mat = np.zeros((len(sparse_freq_amp), len(raw_amps)))
 Phi_mat = np.zeros((len(sparse_freq_phase), len(raw_phases)))
 
 for i, (amp, phase, freqs) in enumerate(zip(raw_amps, raw_phases, raw_freqs)):
-    # ensure monotonic increasing freq array and remove duplicates (required by spline)
     uniq_idx = np.where(np.diff(freqs, prepend=freqs[0]-1e-12) > 0)[0]
     if uniq_idx.size < 2:
-        # cannot spline with <2 points
         raise RuntimeError(f"Too few unique frequency bins for sample {i}. Got {freqs.size} freq points.")
     freqs_unique = freqs[uniq_idx]
     amp_unique = amp[uniq_idx]
     phase_unique = phase[uniq_idx]
 
-    # choose k based on number of unique points: need at least k+1 points
     k_amp = min(3, max(1, freqs_unique.size - 1))
     k_phase = min(3, max(1, freqs_unique.size - 1))
 
-    # Create splines with ext=3 so evaluation outside domain returns extrapolated values
-    # but we will still try to avoid evaluating far outside domain by clamping where possible.
     spline_amp = UnivariateSpline(freqs_unique, amp_unique, s=0, k=k_amp, ext=3)
     spline_phase = UnivariateSpline(freqs_unique, phase_unique, s=0, k=k_phase, ext=3)
 
-    # To avoid "Found x value not in the domain", evaluate in two parts:
-    # 1) inside valid domain (no problem)
-    # 2) outside domain -> use spline with ext=3 (extrapolation)
     fmin, fmax = freqs_unique[0], freqs_unique[-1]
 
-    # amplitude matrix
     inside_mask = (sparse_freq_amp >= fmin) & (sparse_freq_amp <= fmax)
     outside_mask = ~inside_mask
     if inside_mask.any():
         A_mat[inside_mask, i] = spline_amp(sparse_freq_amp[inside_mask])
     if outside_mask.any():
-        # small extrapolations are okay; if the extrapolation region is large you might want to clip instead
+        
         A_mat[outside_mask, i] = spline_amp(sparse_freq_amp[outside_mask])
 
-    # phase matrix
     inside_mask_p = (sparse_freq_phase >= fmin) & (sparse_freq_phase <= fmax)
     outside_mask_p = ~inside_mask_p
     if inside_mask_p.any():
@@ -245,8 +237,8 @@ def evaluate_surrogate_fd(q_star, chi_star, freqs_out):
 
 print("\nValidating model with a test waveform...")
 
-test_params = {'q': 8.23, 'chi': -0.5}
-# test_params = {'q': 4.5, 'chi': 0.45}
+# test_params = {'q': 8.23, 'chi': -0.5}
+test_params = {'q': 4.5, 'chi': 0.45}
 
 true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, nfft)
 mask = (true_freqs >= f_min_grid) & (true_freqs <= f_max_grid)
@@ -286,12 +278,12 @@ axs[1].semilogx(surr_freqs, surr_phase, '--', label='Surrogate Model (centered)'
 axs[1].set_xlabel('Frequency (Hz)', fontsize=12)
 axs[1].set_ylabel('Phase (rad)', fontsize=12)
 axs[1].legend(fontsize=11)
-axs[1].set_title('Phase Comparison (Linearly Centered)', fontsize=14)
+axs[1].set_title('Phase Comparison', fontsize=14)
 axs[1].grid(True, which="both", ls="--")
 
 err = np.linalg.norm(true_h_fd_masked - surr_h_fd) / np.linalg.norm(true_h_fd_masked)
 print(f"Relative L2 error = {err:.3e}")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('Surrogate_Model_vs_True_Model_2.pdf')
+plt.savefig('Surrogate_Model_vs_True_Model_1.pdf')
 plt.show()
