@@ -2,7 +2,8 @@
 
 I list the step-by-step procedure I used to build a
 surrogate model for gravitational waveforms, adapted from the
-implementation as given in [this paper](https://arxiv.org/abs/1512.02248).
+implementation as given in [this paper](https://arxiv.org/abs/1512.02248). 
+However it might not be completely same implementation, which we can check later.
 
 ------------------------------------------------------------------------
 
