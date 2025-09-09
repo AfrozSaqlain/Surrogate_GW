@@ -112,9 +112,18 @@ for params in params_list:
     mask = (freqs >= f_min_grid) & (freqs <= f_max_grid)
     freqs_masked = freqs[mask]
     
+    if freqs_masked.size == 0:
+        continue
+
     amp, phase = get_amp_phase(freqs_masked, h_fd[mask])
 
+    if amp.size == 0:
+        continue
+
     norm = np.linalg.norm(amp)
+    if norm == 0 or not np.isfinite(norm):
+        continue
+
     raw_amps.append(amp / norm)
     amp_norms.append(norm)
 
@@ -126,24 +135,59 @@ print(f"Generated {len(raw_amps)} valid waveforms.")
 
 print("Step II: Creating sparse grids and interpolating...")
 
-sparse_freq_amp = generate_sparse_grid(f_min_grid, f_max_grid, num_points=100, power=1.3)
+sparse_freq_amp = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=1.3)
 sparse_freq_phase = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=4/3)
 
 A_mat = np.zeros((len(sparse_freq_amp), len(raw_amps)))
 Phi_mat = np.zeros((len(sparse_freq_phase), len(raw_phases)))
 
 for i, (amp, phase, freqs) in enumerate(zip(raw_amps, raw_phases, raw_freqs)):
-    spline_amp = UnivariateSpline(freqs, amp, s=0, k=3, ext='raise')
-    spline_phase = UnivariateSpline(freqs, phase, s=0, k=3, ext='raise')
-    A_mat[:, i] = spline_amp(sparse_freq_amp)
-    Phi_mat[:, i] = spline_phase(sparse_freq_phase)
+    # ensure monotonic increasing freq array and remove duplicates (required by spline)
+    uniq_idx = np.where(np.diff(freqs, prepend=freqs[0]-1e-12) > 0)[0]
+    if uniq_idx.size < 2:
+        # cannot spline with <2 points
+        raise RuntimeError(f"Too few unique frequency bins for sample {i}. Got {freqs.size} freq points.")
+    freqs_unique = freqs[uniq_idx]
+    amp_unique = amp[uniq_idx]
+    phase_unique = phase[uniq_idx]
+
+    # choose k based on number of unique points: need at least k+1 points
+    k_amp = min(3, max(1, freqs_unique.size - 1))
+    k_phase = min(3, max(1, freqs_unique.size - 1))
+
+    # Create splines with ext=3 so evaluation outside domain returns extrapolated values
+    # but we will still try to avoid evaluating far outside domain by clamping where possible.
+    spline_amp = UnivariateSpline(freqs_unique, amp_unique, s=0, k=k_amp, ext=3)
+    spline_phase = UnivariateSpline(freqs_unique, phase_unique, s=0, k=k_phase, ext=3)
+
+    # To avoid "Found x value not in the domain", evaluate in two parts:
+    # 1) inside valid domain (no problem)
+    # 2) outside domain -> use spline with ext=3 (extrapolation)
+    fmin, fmax = freqs_unique[0], freqs_unique[-1]
+
+    # amplitude matrix
+    inside_mask = (sparse_freq_amp >= fmin) & (sparse_freq_amp <= fmax)
+    outside_mask = ~inside_mask
+    if inside_mask.any():
+        A_mat[inside_mask, i] = spline_amp(sparse_freq_amp[inside_mask])
+    if outside_mask.any():
+        # small extrapolations are okay; if the extrapolation region is large you might want to clip instead
+        A_mat[outside_mask, i] = spline_amp(sparse_freq_amp[outside_mask])
+
+    # phase matrix
+    inside_mask_p = (sparse_freq_phase >= fmin) & (sparse_freq_phase <= fmax)
+    outside_mask_p = ~inside_mask_p
+    if inside_mask_p.any():
+        Phi_mat[inside_mask_p, i] = spline_phase(sparse_freq_phase[inside_mask_p])
+    if outside_mask_p.any():
+        Phi_mat[outside_mask_p, i] = spline_phase(sparse_freq_phase[outside_mask_p])
 
 print("Step III: Performing SVD to find reduced bases...")
 
 Ua, sa, Vta = np.linalg.svd(A_mat, full_matrices=False)
 Up, sp, Vtp = np.linalg.svd(Phi_mat, full_matrices=False)
 
-rank_a = 60
+rank_a = 30
 rank_p = 60
 B_a = Ua[:, :rank_a] 
 B_p = Up[:, :rank_p] 
@@ -186,8 +230,8 @@ def evaluate_surrogate_fd(q_star, chi_star, freqs_out):
     amp_recon_sparse = B_a @ ca_star
     phase_recon_sparse = B_p @ cp_star
 
-    spline_amp = UnivariateSpline(sparse_freq_amp, amp_recon_sparse, s=0, k=3, ext='raise')
-    spline_phase = UnivariateSpline(sparse_freq_phase, phase_recon_sparse, s=0, k=3, ext='raise')
+    spline_amp = UnivariateSpline(sparse_freq_amp, amp_recon_sparse, s=0, k=min(3, max(1, sparse_freq_amp.size-1)), ext=3)
+    spline_phase = UnivariateSpline(sparse_freq_phase, phase_recon_sparse, s=0, k=min(3, max(1, sparse_freq_phase.size-1)), ext=3)
     
     amp_final = spline_amp(freqs_out)
     phase_final = spline_phase(freqs_out)
