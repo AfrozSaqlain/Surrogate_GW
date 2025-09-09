@@ -1,3 +1,4 @@
+import pycbc
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
@@ -280,8 +281,14 @@ axs[1].legend(fontsize=11)
 axs[1].set_title('Phase Comparison', fontsize=14)
 axs[1].grid(True, which="both", ls="--")
 
-err = np.linalg.norm(true_h_fd_masked - surr_h_fd) / np.linalg.norm(true_h_fd_masked)
-print(f"Relative L2 error = {err:.3e}")
+# Compute mismatch
+pycbc_surr_h_fd = pycbc.types.FrequencySeries(surr_h_fd, delta_f=true_freqs_masked[1]-true_freqs_masked[0], epoch=0)
+pycbc_true_h_fd = pycbc.types.FrequencySeries(true_h_fd_masked, delta_f=true_freqs_masked[1]-true_freqs_masked[0], epoch=0)
+pycbc_surr_h_fd.start_time = 0
+pycbc_true_h_fd.start_time = 0
+
+mismatch = 1 - pycbc.filter.matchedfilter.match(pycbc_surr_h_fd, pycbc_true_h_fd, psd=None, low_frequency_cutoff=f_min_grid)[0]
+print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('Surrogate_Model_vs_True_Model_2.pdf')
