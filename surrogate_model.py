@@ -63,7 +63,6 @@ def get_amp_phase(freqs, h_fd):
 def generate_sparse_grid(f_min, f_max, num_points, power=4/3):
     """
     Implements a simplified version of the 'Constant Spline Error' (CSE) grid generation
-    from Algorithm 1 and Section 5.1 of the paper. [cite: 324, 332, 345]
     The grid spacing Delta(f) is proportional to f^power.
     """
     if power == 1:
