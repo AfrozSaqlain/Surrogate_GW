@@ -2,7 +2,7 @@
 
 I list the step-by-step procedure I used to build a
 surrogate model for gravitational waveforms, adapted from the
-implementation in `surrogate_model.py`.
+implementation as given in [this paper](https://arxiv.org/abs/1512.02248).
 
 ------------------------------------------------------------------------
 
