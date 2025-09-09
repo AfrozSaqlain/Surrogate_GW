@@ -1,8 +1,8 @@
 # Surrogate Model Documentation
 
-This document explains the step-by-step procedure of building a
+I list the step-by-step procedure I used to build a
 surrogate model for gravitational waveforms, adapted from the
-implementation in `surrogate_model_3.py`.
+implementation in `surrogate_model.py`.
 
 ------------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ The surrogate model approximates expensive-to-compute gravitational
 waveforms using reduced-order modeling techniques. The main steps are:
 
 1.  **Generate training data** (waveforms at different parameter
-    values).
+    values, and convert it into frequency domain).
 2.  **Create sparse interpolation grids** for amplitude and phase.
 3.  **Apply Singular Value Decomposition (SVD)** to construct reduced
     bases.
@@ -34,8 +34,7 @@ waveforms using reduced-order modeling techniques. The main steps are:
 ## Step II: Sparse Grids & Interpolation
 
 -   Construct sparse grids in parameter space for efficiency.
--   Interpolate amplitude and phase on these grids using Chebyshev
-    interpolation or equivalent.
+-   Interpolate amplitude and phase on these grids using interpolation methods.
 
 ------------------------------------------------------------------------
 
@@ -63,13 +62,13 @@ waveforms using reduced-order modeling techniques. The main steps are:
     -   A surrogate waveform is reconstructed by combining coefficients
         with reduced bases.
 -   Optional inverse FFT transforms frequency-domain surrogate back to
-    time-domain.
+    time-domain. (*I have not yet implemented this*)
 
 ------------------------------------------------------------------------
 
 ## Notes
 
--   Interpolation can be performed separately for **amplitude** and
+-   Interpolation is performed separately for **amplitude** and
     **phase** rather than directly for complex waveform values.
 -   Reconstruction accuracy improves with more training waveforms but at
     the cost of runtime.
