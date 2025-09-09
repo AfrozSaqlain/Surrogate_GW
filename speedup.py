@@ -1,11 +1,11 @@
+import time
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
-from pycbc.waveform import get_td_waveform
 from scipy.fft import rfft, rfftfreq
+from pycbc.waveform import get_td_waveform
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
-import pickle
-import time
 
 # ----------------------------------------------------
 # Load surrogate model
