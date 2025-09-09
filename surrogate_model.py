@@ -88,7 +88,7 @@ def generate_sparse_grid(f_min, f_max, num_points, power=4/3):
 
 print("Step I: Generating training data...")
 
-q_vals = np.linspace(1, 50, 50)
+q_vals = np.linspace(1, 10, 10)
 chi_vals = np.linspace(-0.8, 0.6, 30)
 param_grid_q, param_grid_chi = np.meshgrid(q_vals, chi_vals)
 params_list = [{'q': q, 'chi': chi} for q, chi in zip(param_grid_q.flatten(), param_grid_chi.flatten())]
@@ -237,8 +237,8 @@ def evaluate_surrogate_fd(q_star, chi_star, freqs_out):
 
 print("\nValidating model with a test waveform...")
 
-# test_params = {'q': 8.23, 'chi': -0.5}
-test_params = {'q': 4.5, 'chi': 0.45}
+test_params = {'q': 8.23, 'chi': -0.5}
+# test_params = {'q': 4.5, 'chi': 0.45}
 
 true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, nfft)
 mask = (true_freqs >= f_min_grid) & (true_freqs <= f_max_grid)
@@ -285,5 +285,5 @@ err = np.linalg.norm(true_h_fd_masked - surr_h_fd) / np.linalg.norm(true_h_fd_ma
 print(f"Relative L2 error = {err:.3e}")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('Surrogate_Model_vs_True_Model_1.pdf')
+plt.savefig('Surrogate_Model_vs_True_Model_2.pdf')
 plt.show()
