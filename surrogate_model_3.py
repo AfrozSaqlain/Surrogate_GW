@@ -112,7 +112,7 @@ def generate_sparse_grid(f_min, f_max, num_points, power=4/3):
 print("Step I: Generating training data...")
 
 # Parameter space grid [cite: 145]
-q_vals = np.linspace(1, 10, 30)
+q_vals = np.linspace(1, 50, 50)
 chi_vals = np.linspace(-0.8, 0.6, 30)
 param_grid_q, param_grid_chi = np.meshgrid(q_vals, chi_vals)
 params_list = [{'q': q, 'chi': chi} for q, chi in zip(param_grid_q.flatten(), param_grid_chi.flatten())]
@@ -182,7 +182,7 @@ Up, sp, Vtp = np.linalg.svd(Phi_mat, full_matrices=False)
 
 # Truncate the basis. The paper notes this is an option for compression.
 # Let's keep a fixed number of modes for simplicity, e.g., 20.
-rank_a = 20
+rank_a = 60
 rank_p = 60
 B_a = Ua[:, :rank_a]  # Amplitude basis matrix [cite: 401]
 B_p = Up[:, :rank_p]  # Phase basis matrix
@@ -274,6 +274,17 @@ true_amp, true_phase = get_amp_phase(true_freqs_masked, true_h_fd_masked)
 
 # Generate the surrogate waveform on the same frequency grid
 surr_freqs, surr_h_fd = evaluate_surrogate_fd(test_params['q'], test_params['chi'], true_freqs_masked)
+
+# plt.plot(true_freqs_masked, np.abs(true_h_fd_masked), label='True Waveform', lw=2)
+# plt.plot(surr_freqs, np.abs(surr_h_fd), '--', label='Surrogate Model', lw=2)
+# plt.xscale('log')
+# plt.yscale('log')
+# plt.xlabel('Frequency (Hz)')
+# plt.ylabel('Amplitude')
+# plt.title(f"Surrogate Model Validation for q={test_params['q']}, χ={test_params['chi']}")
+# plt.legend()
+# plt.grid(True, which="both", ls="--")
+
 surr_amp = np.abs(surr_h_fd)
 surr_phase = np.unwrap(np.angle(surr_h_fd))
 
@@ -298,6 +309,9 @@ axs[1].set_ylabel('Phase (rad)', fontsize=12)
 axs[1].legend(fontsize=11)
 axs[1].set_title('Phase Comparison (Linearly Centered)', fontsize=14)
 axs[1].grid(True, which="both", ls="--")
+
+err = np.linalg.norm(true_h_fd_masked - surr_h_fd) / np.linalg.norm(true_h_fd_masked)
+print(f"Relative L2 error = {err:.3e}")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('Surrogate_Model_vs_True_Model_2.pdf')
