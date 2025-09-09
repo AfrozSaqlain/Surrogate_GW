@@ -291,5 +291,28 @@ mismatch = 1 - pycbc.filter.matchedfilter.match(pycbc_surr_h_fd, pycbc_true_h_fd
 print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('Surrogate_Model_vs_True_Model_2.pdf')
+plt.savefig('Results/Surrogate_Model_vs_True_Model_1.pdf')
 plt.show()
+
+import pickle
+
+def save_surrogate(filename, data):
+    """Save surrogate model data to disk."""
+    with open(filename, "wb") as f:
+        pickle.dump(data, f)
+
+# Pack all required objects
+surrogate_data = {
+    "sparse_freq_amp": sparse_freq_amp,
+    "sparse_freq_phase": sparse_freq_phase,
+    "B_a": B_a,
+    "B_p": B_p,
+    "Ca": Ca,
+    "Cp": Cp,
+    "amp_norms_grid": amp_norms_grid,
+    "q_unique": q_unique,
+    "chi_unique": chi_unique
+}
+
+save_surrogate("Models/surrogate_model.pkl", surrogate_data)
+print("Surrogate model saved to surrogate_model.pkl")
