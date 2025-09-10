@@ -301,7 +301,6 @@ def save_surrogate(filename, data):
     with open(filename, "wb") as f:
         pickle.dump(data, f)
 
-# Pack all required objects
 surrogate_data = {
     "sparse_freq_amp": sparse_freq_amp,
     "sparse_freq_phase": sparse_freq_phase,
