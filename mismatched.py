@@ -1,5 +1,6 @@
 import pycbc
 import pickle
+import pycbc.psd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
@@ -136,7 +137,7 @@ for iq, q in enumerate(q_vals):
 
         mismatch = 1 - pycbc.filter.matchedfilter.match(
             pycbc_surr_h_fd, pycbc_true_h_fd,
-            psd=None,
+            psd=pycbc.psd.aLIGOZeroDetHighPower(len(pycbc_true_h_fd), pycbc_true_h_fd.delta_f, f_lower),
             low_frequency_cutoff=f_min_grid
         )[0]
 
@@ -146,8 +147,8 @@ Q, Chi = np.meshgrid(q_vals, chi_vals)
 
 interp_mismatch = RectBivariateSpline(chi_vals, q_vals, mismatch_vals, kx=3, ky=3, s=3)
 
-q_fine = np.linspace(q_vals.min(), q_vals.max(), 300)
-chi_fine = np.linspace(chi_vals.min(), chi_vals.max(), 300)
+q_fine = np.linspace(q_vals.min(), q_vals.max(), 400)
+chi_fine = np.linspace(chi_vals.min(), chi_vals.max(), 400)
 Q_fine, Chi_fine = np.meshgrid(q_fine, chi_fine)
 
 mismatch_fine = interp_mismatch(chi_fine, q_fine)
@@ -157,5 +158,5 @@ plt.colorbar(label='Mismatch')
 plt.xlabel('Mass Ratio q')
 plt.ylabel('Spin χ')
 plt.title('Mismatch between Surrogate and True Waveforms')
-plt.savefig('Results/mismatch.pdf', dpi=300)
+plt.savefig('Results/mismatch.pdf', dpi=400)
 plt.show()
