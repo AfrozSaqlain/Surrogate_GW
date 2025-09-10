@@ -1,4 +1,5 @@
 import pycbc
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
@@ -255,6 +256,9 @@ def evaluate_surrogate_fd(q_star, chi_star, freqs_out):
 
 print("\nValidating model with a test waveform...")
 
+# -----------------------------------------------------------------------------
+# ## Run a test case to validate the surrogate model
+# -----------------------------------------------------------------------------
 test_params = {'q': 8.23, 'chi': -0.5}
 # test_params = {'q': 4.5, 'chi': 0.45}
 
@@ -299,7 +303,9 @@ axs[1].legend(fontsize=11)
 axs[1].set_title('Phase Comparison', fontsize=14)
 axs[1].grid(True, which="both", ls="--")
 
-# Compute mismatch
+# -----------------------------------------------------------------------------
+# ## Compute mismatch
+# -----------------------------------------------------------------------------
 pycbc_surr_h_fd = pycbc.types.FrequencySeries(surr_h_fd, delta_f=true_freqs_masked[1]-true_freqs_masked[0], epoch=0)
 pycbc_true_h_fd = pycbc.types.FrequencySeries(true_h_fd_masked, delta_f=true_freqs_masked[1]-true_freqs_masked[0], epoch=0)
 pycbc_surr_h_fd.start_time = 0
@@ -308,12 +314,16 @@ pycbc_true_h_fd.start_time = 0
 mismatch = 1 - pycbc.filter.matchedfilter.match(pycbc_surr_h_fd, pycbc_true_h_fd, psd=None, low_frequency_cutoff=f_min_grid)[0]
 print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 
+# -----------------------------------------------------------------------------
+# ## Plot the results
+# -----------------------------------------------------------------------------
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig('Results/Surrogate_Model_vs_True_Model_1.pdf')
 plt.show()
 
-import pickle
-
+# -----------------------------------------------------------------------------
+# ## Save the Surrogate Model
+# -----------------------------------------------------------------------------
 def save_surrogate(filename, data):
     """Save surrogate model data to disk."""
     with open(filename, "wb") as f:
