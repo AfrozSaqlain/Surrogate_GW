@@ -6,6 +6,9 @@ from pycbc.waveform import get_td_waveform
 from scipy.fft import rfft, rfftfreq, irfft
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
 
+# -----------------------------------------------------------------------------
+# ## Setup and Helper Functions
+# -----------------------------------------------------------------------------
 def generate_fd_waveform(params, f_lower, delta_t, nfft):
     """Generates a time-domain waveform, applies a window, and converts to frequency domain."""
     q = params['q']
@@ -86,6 +89,9 @@ def generate_sparse_grid(f_min, f_max, num_points, power=4/3):
     grid = np.array(grid)
     return grid
 
+# -----------------------------------------------------------------------------
+# ## Step I: Generate and Pre-process Training Waveforms
+# -----------------------------------------------------------------------------
 print("Step I: Generating training data...")
 
 q_vals = np.linspace(1, 10, 10)
@@ -133,6 +139,9 @@ for params in params_list:
 
 print(f"Generated {len(raw_amps)} valid waveforms.")
 
+# -----------------------------------------------------------------------------
+# ## Step II: Define Sparse Frequency Grids and Interpolate
+# -----------------------------------------------------------------------------
 print("Step II: Creating sparse grids and interpolating...")
 
 # Higher power corresponds to finer spacing at low frequencies and 
@@ -174,6 +183,9 @@ for i, (amp, phase, freqs) in enumerate(zip(raw_amps, raw_phases, raw_freqs)):
     if outside_mask_p.any():
         Phi_mat[outside_mask_p, i] = spline_phase(sparse_freq_phase[outside_mask_p])
 
+# -----------------------------------------------------------------------------
+# ## Step III: Compute Reduced Bases via SVD
+# -----------------------------------------------------------------------------
 print("Step III: Performing SVD to find reduced bases...")
 
 Ua, sa, Vta = np.linalg.svd(A_mat, full_matrices=False)
@@ -184,6 +196,9 @@ rank_p = 60
 B_a = Ua[:, :rank_a] 
 B_p = Up[:, :rank_p] 
 
+# -----------------------------------------------------------------------------
+# ## Step IV: Interpolate Projection Coefficients
+# -----------------------------------------------------------------------------
 print("Step IV: Interpolating projection coefficients...")
 
 Ca = B_a.T @ A_mat
@@ -209,6 +224,9 @@ for i in range(rank_p):
 amp_norms_grid = np.array(amp_norms).reshape(len(chi_unique), len(q_unique))
 interp_amp_norm = RectBivariateSpline(chi_unique, q_unique, amp_norms_grid, kx=3, ky=3)
 
+# -----------------------------------------------------------------------------
+# ## Step V: Assemble and Evaluate the Surrogate Model
+# -----------------------------------------------------------------------------
 print("Step V: Assembling the surrogate model evaluator.")
 
 def evaluate_surrogate_fd(q_star, chi_star, freqs_out):
