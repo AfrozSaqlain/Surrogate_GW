@@ -1,5 +1,6 @@
 import pycbc
 import pickle
+import pycbc.psd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
@@ -95,7 +96,7 @@ def generate_sparse_grid(f_min, f_max, num_points, power=4/3):
 # -----------------------------------------------------------------------------
 print("Step I: Generating training data...")
 
-q_vals = np.linspace(1, 10, 10)
+q_vals = np.linspace(1, 10, 30)
 chi_vals = np.linspace(-0.8, 0.6, 30)
 param_grid_q, param_grid_chi = np.meshgrid(q_vals, chi_vals)
 params_list = [{'q': q, 'chi': chi} for q, chi in zip(param_grid_q.flatten(), param_grid_chi.flatten())]
@@ -192,8 +193,9 @@ print("Step III: Performing SVD to find reduced bases...")
 Ua, sa, Vta = np.linalg.svd(A_mat, full_matrices=False)
 Up, sp, Vtp = np.linalg.svd(Phi_mat, full_matrices=False)
 
-rank_a = 30
-rank_p = 60
+rank_a = 100
+rank_p = 100
+
 B_a = Ua[:, :rank_a] 
 B_p = Up[:, :rank_p] 
 
@@ -224,6 +226,37 @@ for i in range(rank_p):
 
 amp_norms_grid = np.array(amp_norms).reshape(len(chi_unique), len(q_unique))
 interp_amp_norm = RectBivariateSpline(chi_unique, q_unique, amp_norms_grid, kx=3, ky=3)
+
+# -----------------------------------------------------------------------------
+# ## Check smoothness of projection coefficients
+# -----------------------------------------------------------------------------
+print("Checking smoothness of projection coefficients...")
+
+modes_to_plot = [0, 1, 2, 10, 20]
+
+fig, axs = plt.subplots(len(modes_to_plot), 2, figsize=(12, 3*len(modes_to_plot)))
+fig.suptitle("Projection Coefficients across Parameter Space", fontsize=16)
+
+for j, mode in enumerate(modes_to_plot):
+
+    coeff_grid_a = Ca[mode, :].reshape(len(chi_unique), len(q_unique))
+    coeff_grid_p = Cp[mode, :].reshape(len(chi_unique), len(q_unique))
+
+    im_a = axs[j, 0].pcolormesh(q_unique, chi_unique, coeff_grid_a, shading="auto", cmap="viridis")
+    axs[j, 0].set_title(f"Amplitude Coefficient {mode}")
+    axs[j, 0].set_xlabel("Mass ratio q")
+    axs[j, 0].set_ylabel("Spin χ")
+    fig.colorbar(im_a, ax=axs[j, 0])
+
+    im_p = axs[j, 1].pcolormesh(q_unique, chi_unique, coeff_grid_p, shading="auto", cmap="plasma")
+    axs[j, 1].set_title(f"Phase Coefficient {mode}")
+    axs[j, 1].set_xlabel("Mass ratio q")
+    axs[j, 1].set_ylabel("Spin χ")
+    fig.colorbar(im_p, ax=axs[j, 1])
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig("Results/projection_coefficients.pdf", dpi=300)
+plt.show()
 
 # -----------------------------------------------------------------------------
 # ## Step V: Assemble and Evaluate the Surrogate Model
@@ -259,8 +292,9 @@ print("\nValidating model with a test waveform...")
 # -----------------------------------------------------------------------------
 # ## Run a test case to validate the surrogate model
 # -----------------------------------------------------------------------------
-test_params = {'q': 8.23, 'chi': -0.5}
+# test_params = {'q': 8.23, 'chi': -0.5}
 # test_params = {'q': 4.5, 'chi': 0.45}
+test_params = {'q': 1.23, 'chi': -0.7}
 
 true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, nfft)
 mask = (true_freqs >= f_min_grid) & (true_freqs <= f_max_grid)
@@ -311,14 +345,14 @@ pycbc_true_h_fd = pycbc.types.FrequencySeries(true_h_fd_masked, delta_f=true_fre
 pycbc_surr_h_fd.start_time = 0
 pycbc_true_h_fd.start_time = 0
 
-mismatch = 1 - pycbc.filter.matchedfilter.match(pycbc_surr_h_fd, pycbc_true_h_fd, psd=None, low_frequency_cutoff=f_min_grid)[0]
+mismatch = 1 - pycbc.filter.matchedfilter.match(pycbc_surr_h_fd, pycbc_true_h_fd, psd=pycbc.psd.aLIGOZeroDetHighPower(len(pycbc_true_h_fd), pycbc_true_h_fd.delta_f, f_lower), low_frequency_cutoff=f_min_grid)[0]
 print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 
 # -----------------------------------------------------------------------------
 # ## Plot the results
 # -----------------------------------------------------------------------------
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('Results/Surrogate_Model_vs_True_Model_1.pdf')
+plt.savefig('Results/Surrogate_Model_vs_True_Model_3.pdf')
 plt.show()
 
 # -----------------------------------------------------------------------------

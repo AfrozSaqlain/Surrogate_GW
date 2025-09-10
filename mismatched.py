@@ -4,6 +4,7 @@ import pycbc.psd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
+import matplotlib.colors as colors
 from scipy.fft import rfft, rfftfreq
 from pycbc.waveform import get_td_waveform
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
@@ -153,8 +154,13 @@ Q_fine, Chi_fine = np.meshgrid(q_fine, chi_fine)
 
 mismatch_fine = interp_mismatch(chi_fine, q_fine)
 
-plt.pcolormesh(Q_fine, Chi_fine, mismatch_fine, shading='auto', cmap='viridis')
-plt.colorbar(label='Mismatch')
+plt.pcolormesh(
+    Q_fine, Chi_fine, mismatch_fine,
+    shading='auto',
+    cmap='viridis',
+    norm=colors.LogNorm(vmin=mismatch_fine.min(), vmax=mismatch_fine.max())
+)
+plt.colorbar(label='Mismatch (log scale)')
 plt.xlabel('Mass Ratio q')
 plt.ylabel('Spin χ')
 plt.title('Mismatch between Surrogate and True Waveforms')
