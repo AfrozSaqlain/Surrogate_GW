@@ -251,7 +251,8 @@ for j, mode in enumerate(modes_to_plot):
     ax1.set_xlabel("Mass ratio q")
     ax1.set_ylabel(rf"Spin $\chi$")
     ax1.set_zlabel("Coefficient")
-    fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10, pad=0.1) 
+    ax1.zaxis.labelpad = 15
+    fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10, pad=0.2) 
 
     ax2 = fig.add_subplot(len(modes_to_plot), 2, 2*j+2, projection='3d')
     surf_p = ax2.plot_surface(Q, Chi, coeff_grid_p, cmap="plasma", edgecolor="none")
@@ -259,7 +260,8 @@ for j, mode in enumerate(modes_to_plot):
     ax2.set_xlabel("Mass ratio q")
     ax2.set_ylabel(rf"Spin $\chi$")
     ax2.set_zlabel("Coefficient")
-    fig.colorbar(surf_p, ax=ax2, shrink=0.6, aspect=10, pad=0.1) 
+    ax2.zaxis.labelpad = 15
+    fig.colorbar(surf_p, ax=ax2, shrink=0.6, aspect=10, pad=0.2) 
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.subplots_adjust(hspace=0.3)
