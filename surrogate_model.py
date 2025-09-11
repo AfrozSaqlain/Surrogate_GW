@@ -157,7 +157,7 @@ def planck_taper(N, epsilon=0.1):
 
     return w
 
-def generate_fd_waveform(params, f_lower, delta_t, window_type='planck', epsilon=0.1):
+def generate_fd_waveform(params, f_lower, delta_t, window_type='lal_planck', epsilon=0.1):
     """Generates a time-domain waveform, applies a window, and converts to frequency domain."""
     q = params['q']
     chi = params['chi']
@@ -180,7 +180,8 @@ def generate_fd_waveform(params, f_lower, delta_t, window_type='planck', epsilon
         window = windows.tukey(len(h_td_raw), alpha=0.1)
     elif window_type == "planck":
         window = planck_taper(len(h_td_raw), epsilon=epsilon)
-        # window = Planck_window_LAL(h_td_raw, taper_method='LAL_SIM_INSPIRAL_TAPER_STARTEND', num_extrema_start=2, num_extrema_end=2)
+    elif window_type == "lal_planck":
+        window = Planck_window_LAL(h_td_raw, taper_method='LAL_SIM_INSPIRAL_TAPER_STARTEND', num_extrema_start=2, num_extrema_end=2) 
     else:
         window = np.ones(len(h_td_raw))
 
