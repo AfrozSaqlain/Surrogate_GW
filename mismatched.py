@@ -1,5 +1,7 @@
+import os
 import pycbc
 import pickle
+import argparse
 import pycbc.psd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +10,13 @@ import matplotlib.colors as colors
 from scipy.fft import rfft, rfftfreq
 from pycbc.waveform import get_td_waveform
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
+
+parser = argparse.ArgumentParser(description="Train a surrogate model for gravitational waveforms.")
+parser.add_argument('--results-dir', type=str, default='Results', help='Directory to save results and plots.')
+args = parser.parse_args()
+
+if args.results_dir != 'Results' and not os.path.exists(args.results_dir):
+    os.makedirs(args.results_dir)
 
 # ----------------------------------------------------
 # Load surrogate model
@@ -164,5 +173,5 @@ plt.colorbar(label='Mismatch (log scale)')
 plt.xlabel('Mass Ratio q')
 plt.ylabel('Spin χ')
 plt.title('Mismatch between Surrogate and True Waveforms')
-plt.savefig('Results/mismatch.pdf', dpi=400)
+plt.savefig(f'{args.results_dir}/mismatch.pdf', dpi=400)
 plt.show()
