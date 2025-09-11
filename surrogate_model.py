@@ -1,5 +1,7 @@
+import os
 import pycbc
 import pickle
+import argparse
 import pycbc.psd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +10,13 @@ from mpl_toolkits.mplot3d import Axes3D
 from pycbc.waveform import get_td_waveform
 from scipy.fft import rfft, rfftfreq, irfft
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
+
+parser = argparse.ArgumentParser(description="Train a surrogate model for gravitational waveforms.")
+parser.add_argument('--results-dir', type=str, default='Results', help='Directory to save results and plots.')
+args = parser.parse_args()
+
+if args.results_dir != 'Results' and not os.path.exists(args.results_dir):
+    os.makedirs(args.results_dir)
 
 # -----------------------------------------------------------------------------
 # ## Setup and Helper Functions
@@ -265,7 +274,7 @@ for j, mode in enumerate(modes_to_plot):
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.subplots_adjust(hspace=0.3)
-plt.savefig("Results/projection_coefficients.pdf", dpi=300)
+plt.savefig(f"{args.results_dir}/projection_coefficients.pdf", dpi=300)
 plt.show()
 
 # -----------------------------------------------------------------------------
@@ -362,7 +371,7 @@ print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 # ## Plot the results
 # -----------------------------------------------------------------------------
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig('Results/Surrogate_Model_vs_True_Model_3.pdf')
+plt.savefig(f'{args.results_dir}/Surrogate_Model_vs_True_Model_3.pdf')
 plt.show()
 
 # -----------------------------------------------------------------------------
