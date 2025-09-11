@@ -236,7 +236,7 @@ print("Checking smoothness of projection coefficients...")
 modes_to_plot = [0, 1, 2, 3, 10, 20]
 
 fig = plt.figure(figsize=(14, 4*len(modes_to_plot)))
-fig.suptitle("Projection Coefficients across Parameter Space (3D)", fontsize=16)
+fig.suptitle("Projection Coefficients across Parameter Space", fontsize=16)
 
 for j, mode in enumerate(modes_to_plot):
 
@@ -251,7 +251,7 @@ for j, mode in enumerate(modes_to_plot):
     ax1.set_xlabel("Mass ratio q")
     ax1.set_ylabel("Spin χ")
     ax1.set_zlabel("Coefficient")
-    fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10)
+    fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10, pad=0.1) 
 
     ax2 = fig.add_subplot(len(modes_to_plot), 2, 2*j+2, projection='3d')
     surf_p = ax2.plot_surface(Q, Chi, coeff_grid_p, cmap="plasma", edgecolor="none")
@@ -259,9 +259,10 @@ for j, mode in enumerate(modes_to_plot):
     ax2.set_xlabel("Mass ratio q")
     ax2.set_ylabel("Spin χ")
     ax2.set_zlabel("Coefficient")
-    fig.colorbar(surf_p, ax=ax2, shrink=0.6, aspect=10)
+    fig.colorbar(surf_p, ax=ax2, shrink=0.6, aspect=10, pad=0.1) 
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.subplots_adjust(hspace=0.3)
 plt.savefig("Results/projection_coefficients.pdf", dpi=300)
 plt.show()
 
