@@ -7,6 +7,8 @@ However my implementation might not be completely same as
 given in paper (which we can check later).
 
 ------------------------------------------------------------------------
+The main file to train the surrogate model is `surrogate_model.py`, and the one used  to compute mismatch is `mismatched.py`.
+------------------------------------------------------------------------
 
 ## Overview
 
