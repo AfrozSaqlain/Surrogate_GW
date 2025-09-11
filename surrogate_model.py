@@ -4,6 +4,7 @@ import pycbc.psd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import windows
+from mpl_toolkits.mplot3d import Axes3D
 from pycbc.waveform import get_td_waveform
 from scipy.fft import rfft, rfftfreq, irfft
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
@@ -232,27 +233,36 @@ interp_amp_norm = RectBivariateSpline(chi_unique, q_unique, amp_norms_grid, kx=3
 # -----------------------------------------------------------------------------
 print("Checking smoothness of projection coefficients...")
 
-modes_to_plot = [0, 1, 2, 10, 20]
+modes_to_plot = [0, 1, 2, 3, 10, 20]
 
-fig, axs = plt.subplots(len(modes_to_plot), 2, figsize=(12, 3*len(modes_to_plot)))
-fig.suptitle("Projection Coefficients across Parameter Space", fontsize=16)
+fig = plt.figure(figsize=(14, 4*len(modes_to_plot)))
+fig.suptitle("Projection Coefficients across Parameter Space (3D)", fontsize=16)
 
 for j, mode in enumerate(modes_to_plot):
 
     coeff_grid_a = Ca[mode, :].reshape(len(chi_unique), len(q_unique))
     coeff_grid_p = Cp[mode, :].reshape(len(chi_unique), len(q_unique))
 
-    im_a = axs[j, 0].pcolormesh(q_unique, chi_unique, coeff_grid_a, shading="auto", cmap="viridis")
-    axs[j, 0].set_title(f"Amplitude Coefficient {mode}")
-    axs[j, 0].set_xlabel("Mass ratio q")
-    axs[j, 0].set_ylabel("Spin χ")
-    fig.colorbar(im_a, ax=axs[j, 0])
+    # Create meshgrid for q and chi
+    Q, Chi = np.meshgrid(q_unique, chi_unique)
 
-    im_p = axs[j, 1].pcolormesh(q_unique, chi_unique, coeff_grid_p, shading="auto", cmap="plasma")
-    axs[j, 1].set_title(f"Phase Coefficient {mode}")
-    axs[j, 1].set_xlabel("Mass ratio q")
-    axs[j, 1].set_ylabel("Spin χ")
-    fig.colorbar(im_p, ax=axs[j, 1])
+    # ---------------- Amplitude Coeff ----------------
+    ax1 = fig.add_subplot(len(modes_to_plot), 2, 2*j+1, projection='3d')
+    surf_a = ax1.plot_surface(Q, Chi, coeff_grid_a, cmap="viridis", edgecolor="none")
+    ax1.set_title(f"Amplitude Coefficient {mode}")
+    ax1.set_xlabel("Mass ratio q")
+    ax1.set_ylabel("Spin χ")
+    ax1.set_zlabel("Coefficient")
+    fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10)
+
+    # ---------------- Phase Coeff ----------------
+    ax2 = fig.add_subplot(len(modes_to_plot), 2, 2*j+2, projection='3d')
+    surf_p = ax2.plot_surface(Q, Chi, coeff_grid_p, cmap="plasma", edgecolor="none")
+    ax2.set_title(f"Phase Coefficient {mode}")
+    ax2.set_xlabel("Mass ratio q")
+    ax2.set_ylabel("Spin χ")
+    ax2.set_zlabel("Coefficient")
+    fig.colorbar(surf_p, ax=ax2, shrink=0.6, aspect=10)
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig("Results/projection_coefficients.pdf", dpi=300)
