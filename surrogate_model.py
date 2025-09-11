@@ -22,6 +22,117 @@ if args.results_dir != 'Results' and not os.path.exists(args.results_dir):
 # -----------------------------------------------------------------------------
 # ## Setup and Helper Functions
 # -----------------------------------------------------------------------------
+LALSIMULATION_RINGING_EXTENT = 19
+def Planck_window_LAL(data, taper_method='LAL_SIM_INSPIRAL_TAPER_STARTEND', num_extrema_start=2, num_extrema_end=2):
+    """
+    Parameters:
+    -----------
+    data: 1D numpy array 
+        data to taper
+    taper_method: string
+        Tapering method. Available methods are: 
+        "LAL_SIM_INSPIRAL_TAPER_START"
+        "LAL_SIM_INSPIRAL_TAPER_END"
+        "LAL_SIM_INSPIRAL_TAPER_STARTEND"
+    num_extrema_start: int
+        number of extrema till which to taper from the start
+    num_extrema_end: int
+        number of extrema till which to taper from the end
+        
+    Returns:
+    --------
+    window: 1D numpy array
+        Planck tapering window
+    """
+    start=0
+    end=0
+    n=0
+    length = len(data)
+
+    # Search for start and end of signal
+    flag = 0
+    i = 0
+    while(flag == 0 and i < length):
+        if (data[i] != 0.):
+            start = i
+            flag = 1
+        i+=1
+    if (flag == 0):
+        raise ValueError("No signal found in the vector. Cannot taper.\n")
+
+    flag = 0
+    i = length - 1
+    while( flag == 0 ):
+        if( data[i] != 0. ):
+                end = i
+                flag = 1
+        i-=1
+
+    # Check we have more than 2 data points 
+    if( (end - start) <= 1 ):
+        raise RuntimeError( "Data less than 3 points, cannot taper!\n" )
+
+    # Calculate middle point in case of short waveform
+    mid = int((start+end)/2)
+
+    window = np.ones(length)
+    # If requested search for num_extrema_start-th peak from start and taper
+    if( taper_method != "LAL_SIM_INSPIRAL_TAPER_END" ):
+        flag = 0
+        i = start+1
+        while ( flag < num_extrema_start and i != mid ):
+            if( abs(data[i]) >= abs(data[i-1]) and
+                abs(data[i]) >= abs(data[i+1]) ):
+            
+                if( abs(data[i]) == abs(data[i+1]) ):
+                    i+=1
+                # only count local extrema more than 19 samples in
+                if ( i-start > LALSIMULATION_RINGING_EXTENT ):
+                    flag+=1
+                n = i - start
+            i+=1
+
+        # Have we reached the middle without finding `num_extrema_start` peaks?
+        if( flag < num_extrema_start ):
+            n = mid - start
+            print(f"""WARNING: Reached the middle of waveform without finding {num_extrema_start} extrema. Tapering only till the middle from the beginning.""")
+
+        # Taper to that point
+        realN = n
+        window[:start+1] = 0.0
+        realI = np.arange(1, n - 1)
+        z = (realN - 1.0)/realI + (realN - 1.0)/(realI - (realN - 1.0))
+        window[start+1: start+n-1] = 1.0/(np.exp(z) + 1.0)
+
+    # If requested search for num_extrema_end-th peak from end
+    if( taper_method == "LAL_SIM_INSPIRAL_TAPER_END" or taper_method == "LAL_SIM_INSPIRAL_TAPER_STARTEND" ):
+        i = end - 1
+        flag = 0
+        while( flag < num_extrema_end and i != mid ):
+            if( abs(data[i]) >= abs(data[i+1]) and
+                abs(data[i]) >= abs(data[i-1]) ):
+                if( abs(data[i]) == abs(data[i-1]) ):
+                    i-=1
+                # only count local extrema more than 19 samples in
+                if ( end-i > LALSIMULATION_RINGING_EXTENT ):
+                    flag+=1
+                n = end - i
+            i-=1
+
+        # Have we reached the middle without finding `num_extrema_end` peaks?
+        if( flag < num_extrema_end ):
+            n = end - mid
+            print(f"""WARNING: Reached the middle of waveform without finding {num_extrema_end} extrema. Tapering only till the middle from the end.""")
+
+        # Taper to that point
+        realN = n
+        window[end:] = 0.0        
+        realI = -np.arange(-n+2, 0)
+        z = (realN - 1.0)/realI + (realN - 1.0)/(realI - (realN - 1.0))
+        window[end-n+2:end] = 1.0/(np.exp(z) + 1.0)
+
+    return window
+
 def planck_taper(N, epsilon=0.1):
     """
     Planck-taper window.
@@ -69,6 +180,7 @@ def generate_fd_waveform(params, f_lower, delta_t, window_type='planck', epsilon
         window = windows.tukey(len(h_td_raw), alpha=0.1)
     elif window_type == "planck":
         window = planck_taper(len(h_td_raw), epsilon=epsilon)
+        # window = Planck_window_LAL(h_td_raw, taper_method='LAL_SIM_INSPIRAL_TAPER_STARTEND', num_extrema_start=2, num_extrema_end=2)
     else:
         window = np.ones(len(h_td_raw))
 
@@ -208,8 +320,8 @@ for i, (amp, phase, freqs) in enumerate(zip(raw_amps, raw_phases, raw_freqs)):
     k_amp = min(3, max(1, freqs_unique.size - 1))
     k_phase = min(3, max(1, freqs_unique.size - 1))
 
-    spline_amp = UnivariateSpline(freqs_unique, amp_unique, s=0, k=k_amp, ext=3)
-    spline_phase = UnivariateSpline(freqs_unique, phase_unique, s=0, k=k_phase, ext=3)
+    spline_amp = UnivariateSpline(freqs_unique, amp_unique, s=0, k=k_amp, ext=0)
+    spline_phase = UnivariateSpline(freqs_unique, phase_unique, s=0, k=k_phase, ext=0)
 
     fmin, fmax = freqs_unique[0], freqs_unique[-1]
 
@@ -326,8 +438,8 @@ def evaluate_surrogate_fd(q_star, chi_star, freqs_out):
     amp_recon_sparse = B_a @ ca_star
     phase_recon_sparse = B_p @ cp_star
 
-    spline_amp = UnivariateSpline(sparse_freq_amp, amp_recon_sparse, s=0, k=min(3, max(1, sparse_freq_amp.size-1)), ext=3)
-    spline_phase = UnivariateSpline(sparse_freq_phase, phase_recon_sparse, s=0, k=min(3, max(1, sparse_freq_phase.size-1)), ext=3)
+    spline_amp = UnivariateSpline(sparse_freq_amp, amp_recon_sparse, s=0, k=min(3, max(1, sparse_freq_amp.size-1)), ext=0)
+    spline_phase = UnivariateSpline(sparse_freq_phase, phase_recon_sparse, s=0, k=min(3, max(1, sparse_freq_phase.size-1)), ext=0)
     
     amp_final = spline_amp(freqs_out)
     phase_final = spline_phase(freqs_out)
@@ -397,7 +509,7 @@ pycbc_true_h_fd = pycbc.types.FrequencySeries(true_h_fd_masked, delta_f=true_fre
 pycbc_surr_h_fd.start_time = 0
 pycbc_true_h_fd.start_time = 0
 
-mismatch = 1 - pycbc.filter.matchedfilter.match(pycbc_surr_h_fd, pycbc_true_h_fd, psd=pycbc.psd.aLIGOZeroDetHighPower(len(pycbc_true_h_fd), pycbc_true_h_fd.delta_f, f_lower), low_frequency_cutoff=f_min_grid)[0]
+mismatch = 1 - pycbc.filter.matchedfilter.optimized_match(pycbc_surr_h_fd, pycbc_true_h_fd, psd=pycbc.psd.aLIGOZeroDetHighPower(len(pycbc_true_h_fd), pycbc_true_h_fd.delta_f, f_lower), low_frequency_cutoff=f_min_grid)[0]
 print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 
 # -----------------------------------------------------------------------------
