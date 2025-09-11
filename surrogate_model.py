@@ -249,7 +249,7 @@ for j, mode in enumerate(modes_to_plot):
     surf_a = ax1.plot_surface(Q, Chi, coeff_grid_a, cmap="viridis", edgecolor="none")
     ax1.set_title(f"Amplitude Coefficient {mode}")
     ax1.set_xlabel("Mass ratio q")
-    ax1.set_ylabel("Spin χ")
+    ax1.set_ylabel(rf"Spin $\chi$")
     ax1.set_zlabel("Coefficient")
     fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10, pad=0.1) 
 
@@ -257,7 +257,7 @@ for j, mode in enumerate(modes_to_plot):
     surf_p = ax2.plot_surface(Q, Chi, coeff_grid_p, cmap="plasma", edgecolor="none")
     ax2.set_title(f"Phase Coefficient {mode}")
     ax2.set_xlabel("Mass ratio q")
-    ax2.set_ylabel("Spin χ")
+    ax2.set_ylabel(rf"Spin $\chi$")
     ax2.set_zlabel("Coefficient")
     fig.colorbar(surf_p, ax=ax2, shrink=0.6, aspect=10, pad=0.1) 
 
@@ -319,7 +319,7 @@ surr_freqs, surr_h_fd = evaluate_surrogate_fd(test_params['q'], test_params['chi
 # plt.yscale('log')
 # plt.xlabel('Frequency (Hz)')
 # plt.ylabel('Amplitude')
-# plt.title(f"Surrogate Model Validation for q={test_params['q']}, χ={test_params['chi']}")
+# plt.title(f"Surrogate Model Validation for q={test_params['q']}, $\chi$={test_params['chi']}")
 # plt.legend()
 # plt.grid(True, which="both", ls="--")
 
@@ -328,7 +328,7 @@ surr_phase = np.unwrap(np.angle(surr_h_fd))
 
 plt.style.use('seaborn-v0_8-whitegrid')
 fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
-fig.suptitle(f"Surrogate Model Validation for q={test_params['q']}, χ={test_params['chi']}", fontsize=16)
+fig.suptitle(rf"Surrogate Model Validation for q={test_params['q']}, $\chi$={test_params['chi']}", fontsize=16)
 
 axs[0].loglog(true_freqs_masked, true_amp, label='True Waveform', lw=3, alpha=0.8)
 axs[0].loglog(surr_freqs, surr_amp, '--', label='Surrogate Model', lw=2, color='red')
