@@ -245,7 +245,6 @@ for j, mode in enumerate(modes_to_plot):
 
     Q, Chi = np.meshgrid(q_unique, chi_unique)
 
-    # ---------------- Amplitude Coeff ----------------
     ax1 = fig.add_subplot(len(modes_to_plot), 2, 2*j+1, projection='3d')
     surf_a = ax1.plot_surface(Q, Chi, coeff_grid_a, cmap="viridis", edgecolor="none")
     ax1.set_title(f"Amplitude Coefficient {mode}")
@@ -254,7 +253,6 @@ for j, mode in enumerate(modes_to_plot):
     ax1.set_zlabel("Coefficient")
     fig.colorbar(surf_a, ax=ax1, shrink=0.6, aspect=10)
 
-    # ---------------- Phase Coeff ----------------
     ax2 = fig.add_subplot(len(modes_to_plot), 2, 2*j+2, projection='3d')
     surf_p = ax2.plot_surface(Q, Chi, coeff_grid_p, cmap="plasma", edgecolor="none")
     ax2.set_title(f"Phase Coefficient {mode}")
