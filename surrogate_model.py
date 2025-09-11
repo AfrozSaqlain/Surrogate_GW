@@ -73,6 +73,8 @@ def generate_fd_waveform(params, f_lower, delta_t, window_type='planck', epsilon
         window = np.ones(len(h_td_raw))
 
     h_td_windowed = h_td_raw * window
+    
+    #refined the zero-padding scheme by extending the waveform length to the smallest power of two greater than twice its original length. This approach ensures efficient FFT computation and improves frequency resolution by providing a denser sampling of the frequency axis without altering the underlying physical content of the signal.
 
     L = len(h_td_windowed)
     nfft = 2 ** int(np.ceil(np.log2(2 * L)))
