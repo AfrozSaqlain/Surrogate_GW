@@ -4,6 +4,7 @@ import pickle
 import argparse
 import pycbc.psd
 import numpy as np
+from scipy.special import expit
 import matplotlib.pyplot as plt
 from scipy.signal import windows
 from mpl_toolkits.mplot3d import Axes3D
@@ -21,7 +22,31 @@ if args.results_dir != 'Results' and not os.path.exists(args.results_dir):
 # -----------------------------------------------------------------------------
 # ## Setup and Helper Functions
 # -----------------------------------------------------------------------------
-def generate_fd_waveform(params, f_lower, delta_t, nfft):
+def planck_taper(N, epsilon=0.1):
+    """
+    Planck-taper window.
+    """
+    if not (0 < epsilon < 0.5):
+        raise ValueError("epsilon must be between 0 and 0.5")
+
+    w = np.ones(N)
+    L = int(epsilon * N)
+
+    if L == 0:
+        return w
+
+    n = np.arange(1, L)
+    x = L/n - L/(L-n)
+    w[:L-1] = expit(-x)
+    w[0] = 0.0
+
+    x = L/(L-n) - L/n
+    w[-(L-1):] = expit(-x)
+    w[-1] = 0.0
+
+    return w
+
+def generate_fd_waveform(params, f_lower, delta_t, window_type='planck', epsilon=0.1):
     """Generates a time-domain waveform, applies a window, and converts to frequency domain."""
     q = params['q']
     chi = params['chi']
@@ -40,13 +65,19 @@ def generate_fd_waveform(params, f_lower, delta_t, nfft):
         print(f"Could not generate waveform for q={q}, chi={chi}: {e}")
         return None, None
 
-    tukey_window = windows.tukey(len(h_td_raw), alpha=0.1)
-    h_td_windowed = h_td_raw * tukey_window
-
-    if len(h_td_windowed) < nfft:
-        h_td = np.pad(h_td_windowed, (0, nfft - len(h_td_windowed)))
+    if window_type == "tukey":
+        window = windows.tukey(len(h_td_raw), alpha=0.1)
+    elif window_type == "planck":
+        window = planck_taper(len(h_td_raw), epsilon=epsilon)
     else:
-        h_td = h_td_windowed[:nfft]
+        window = np.ones(len(h_td_raw))
+
+    h_td_windowed = h_td_raw * window
+
+    L = len(h_td_windowed)
+    nfft = 2 ** int(np.ceil(np.log2(2 * L)))
+
+    h_td = np.pad(h_td_windowed, (0, nfft - L))
 
     freqs = rfftfreq(nfft, delta_t)
     h_fd = rfft(h_td)
@@ -115,7 +146,7 @@ f_lower = 20.0
 f_min_grid = 25.0
 f_max_grid = 1024.0
 delta_t = 1/4096
-nfft = 16 * 4096
+# nfft = 16 * 4096
 
 raw_amps = []
 raw_phases = []
@@ -124,7 +155,7 @@ amp_norms = []
 valid_params = []
 
 for params in params_list:
-    freqs, h_fd = generate_fd_waveform(params, f_lower, delta_t, nfft)
+    freqs, h_fd = generate_fd_waveform(params, f_lower, delta_t)
     if freqs is None: continue
 
     mask = (freqs >= f_min_grid) & (freqs <= f_max_grid)
@@ -315,7 +346,7 @@ print("\nValidating model with a test waveform...")
 # test_params = {'q': 4.5, 'chi': 0.45}
 test_params = {'q': 1.23, 'chi': -0.7}
 
-true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, nfft)
+true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t)
 mask = (true_freqs >= f_min_grid) & (true_freqs <= f_max_grid)
 true_freqs_masked = true_freqs[mask]
 true_h_fd_masked = true_h_fd[mask]

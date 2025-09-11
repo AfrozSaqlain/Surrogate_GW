@@ -4,11 +4,13 @@ import pickle
 import argparse
 import pycbc.psd
 import numpy as np
+from scipy.special import expit
 import matplotlib.pyplot as plt
 from scipy.signal import windows
 import matplotlib.colors as colors
 from scipy.fft import rfft, rfftfreq
 from pycbc.waveform import get_td_waveform
+from scipy.interpolate import RegularGridInterpolator
 from scipy.interpolate import UnivariateSpline, RectBivariateSpline
 
 parser = argparse.ArgumentParser(description="Train a surrogate model for gravitational waveforms.")
@@ -73,9 +75,33 @@ def evaluate_surrogate_fd(q_star, chi_star, freqs_out, surrogate):
 
 
 # ----------------------------------------------------
-# Generate frequency-domain waveform using PyCBC
+# Generate frequency-domain waveform
 # ----------------------------------------------------
-def generate_fd_waveform(params, f_lower, delta_t, nfft):
+def planck_taper(N, epsilon=0.1):
+    """
+    Stable Planck-taper window.
+    """
+    if not (0 < epsilon < 0.5):
+        raise ValueError("epsilon must be between 0 and 0.5")
+
+    w = np.ones(N)
+    L = int(epsilon * N)
+
+    if L == 0:
+        return w
+
+    n = np.arange(1, L)
+    x = L/n - L/(L-n)
+    w[:L-1] = expit(-x)
+    w[0] = 0.0
+
+    x = L/(L-n) - L/n
+    w[-(L-1):] = expit(-x)
+    w[-1] = 0.0
+
+    return w
+
+def generate_fd_waveform(params, f_lower, delta_t, window_type='planck', epsilon=0.1):
     """Generates a time-domain waveform, applies a window, and converts to frequency domain."""
     q = params['q']
     chi = params['chi']
@@ -94,13 +120,19 @@ def generate_fd_waveform(params, f_lower, delta_t, nfft):
         print(f"Could not generate waveform for q={q}, chi={chi}: {e}")
         return None, None
 
-    tukey_window = windows.tukey(len(h_td_raw), alpha=0.1)
-    h_td_windowed = h_td_raw * tukey_window
-
-    if len(h_td_windowed) < nfft:
-        h_td = np.pad(h_td_windowed, (0, nfft - len(h_td_windowed)))
+    if window_type == "tukey":
+        window = windows.tukey(len(h_td_raw), alpha=0.1)
+    elif window_type == "planck":
+        window = planck_taper(len(h_td_raw), epsilon=epsilon)
     else:
-        h_td = h_td_windowed[:nfft]
+        window = np.ones(len(h_td_raw))
+
+    h_td_windowed = h_td_raw * window
+
+    L = len(h_td_windowed)
+    nfft = 2 ** int(np.ceil(np.log2(2 * L)))
+
+    h_td = np.pad(h_td_windowed, (0, nfft - L))
 
     freqs = rfftfreq(nfft, delta_t)
     h_fd = rfft(h_td)
@@ -119,7 +151,7 @@ f_lower = 20.0
 f_min_grid = 25.0
 f_max_grid = 1024.0
 delta_t = 1/4096
-nfft = 16 * 4096
+# nfft = 16 * 4096
 
 total_mass = 40
 q_vals = np.linspace(1, 10, 100)
@@ -131,7 +163,7 @@ for iq, q in enumerate(q_vals):
     for ichi, chi in enumerate(chi_vals):
         params = {'q': q, 'chi': chi}
 
-        true_freqs, true_h_fd = generate_fd_waveform(params, f_lower, delta_t, nfft)
+        true_freqs, true_h_fd = generate_fd_waveform(params, f_lower, delta_t)
         if true_freqs is None:
             mismatch_vals[ichi, iq] = np.nan
             continue
@@ -155,13 +187,30 @@ for iq, q in enumerate(q_vals):
 
 Q, Chi = np.meshgrid(q_vals, chi_vals)
 
-interp_mismatch = RectBivariateSpline(chi_vals, q_vals, mismatch_vals, kx=3, ky=3, s=3)
+interp_mismatch = RegularGridInterpolator(
+    (chi_vals, q_vals), mismatch_vals,
+    method="linear", bounds_error=False, fill_value=None
+)
 
 q_fine = np.linspace(q_vals.min(), q_vals.max(), 400)
 chi_fine = np.linspace(chi_vals.min(), chi_vals.max(), 400)
 Q_fine, Chi_fine = np.meshgrid(q_fine, chi_fine)
 
-mismatch_fine = interp_mismatch(chi_fine, q_fine)
+mismatch_fine = interp_mismatch((Chi_fine, Q_fine))
+
+plt.pcolormesh(
+    Q, Chi, mismatch_vals,
+    shading='auto',
+    cmap='viridis',
+    norm=colors.LogNorm(vmin=mismatch.min(), vmax=mismatch.max())
+)
+plt.colorbar(label='Mismatch (log scale)')
+plt.xlabel('Mass Ratio q')
+plt.ylabel('Spin χ')
+plt.title('Mismatch between Surrogate and True Waveforms')
+plt.savefig(f'{args.results_dir}/mismatch.pdf', dpi=400)
+plt.show()
+
 
 plt.pcolormesh(
     Q_fine, Chi_fine, mismatch_fine,
@@ -173,5 +222,5 @@ plt.colorbar(label='Mismatch (log scale)')
 plt.xlabel('Mass Ratio q')
 plt.ylabel('Spin χ')
 plt.title('Mismatch between Surrogate and True Waveforms')
-plt.savefig(f'{args.results_dir}/mismatch.pdf', dpi=400)
+plt.savefig(f'{args.results_dir}/interpolated_mismatch.pdf', dpi=400)
 plt.show()
