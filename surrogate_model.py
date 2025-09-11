@@ -243,7 +243,6 @@ for j, mode in enumerate(modes_to_plot):
     coeff_grid_a = Ca[mode, :].reshape(len(chi_unique), len(q_unique))
     coeff_grid_p = Cp[mode, :].reshape(len(chi_unique), len(q_unique))
 
-    # Create meshgrid for q and chi
     Q, Chi = np.meshgrid(q_unique, chi_unique)
 
     # ---------------- Amplitude Coeff ----------------
