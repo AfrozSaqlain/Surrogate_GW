@@ -270,7 +270,7 @@ amp_norms = []
 valid_params = []
 
 for params in params_list:
-    freqs, h_fd = generate_fd_waveform(params, f_lower, delta_t)
+    freqs, h_fd = generate_fd_waveform(params, f_lower, delta_t, window_type='planck')
     if freqs is None: continue
 
     mask = (freqs >= f_min_grid) & (freqs <= f_max_grid)
@@ -281,10 +281,12 @@ for params in params_list:
 
     amp, phase = get_amp_phase(freqs_masked, h_fd[mask])
 
-    if amp.size == 0:
+    if amp.size < 2:
         continue
+    df = freqs_masked[1] - freqs_masked[0]
 
-    norm = np.linalg.norm(amp)
+    norm = np.sqrt(np.sum(amp**2) * df)
+
     if norm == 0 or not np.isfinite(norm):
         continue
 
@@ -348,6 +350,68 @@ print("Step III: Performing SVD to find reduced bases...")
 
 Ua, sa, Vta = np.linalg.svd(A_mat, full_matrices=False)
 Up, sp, Vtp = np.linalg.svd(Phi_mat, full_matrices=False)
+
+# -----------------------------------------------------------------------------
+# ## Plotting the SVD values
+# -----------------------------------------------------------------------------
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_normalized_singular_values(sa, sp):
+    """
+    Plots normalized singular values and their cumulative sums
+    for the amplitude and phase matrices.
+    This helps in determining the effective rank of the matrices
+    and selecting the truncation rank.
+    """
+    plt.style.use('seaborn-v0_8-whitegrid')
+    fig, axs = plt.subplots(2, 2, figsize=(16, 10))
+    fig.suptitle("Singular Value Analysis", fontsize=16)
+
+    # --- Amplitude singular values ---
+    normalized_sa = sa / sa[0]
+    x_sa = np.arange(1, len(sa) + 1)  # start x-axis at 1
+    axs[0, 0].semilogy(x_sa, normalized_sa, '-o', markersize=4)
+    axs[0, 0].set_ylim(min(normalized_sa), 1.0)
+    axs[0, 0].set_title("Amplitude Singular Values", fontsize=14)
+    axs[0, 0].set_xlabel("Singular Value Index", fontsize=12)
+    axs[0, 0].set_ylabel("Normalized Singular Value", fontsize=12)
+    axs[0, 0].grid(True, which="both", ls="--")
+
+    # Cumulative sum (Amplitude)
+    cumsum_sa = np.cumsum(sa) / np.sum(sa)
+    axs[1, 0].plot(x_sa, cumsum_sa, '-o', markersize=4)
+    axs[1, 0].set_ylim(0, 1.05)
+    axs[1, 0].set_title("Cumulative Sum (Amplitude)", fontsize=14)
+    axs[1, 0].set_xlabel("Singular Value Index", fontsize=12)
+    axs[1, 0].set_ylabel("Cumulative Energy", fontsize=12)
+    axs[1, 0].grid(True, which="both", ls="--")
+
+    # --- Phase singular values ---
+    normalized_sp = sp / sp[0]
+    x_sp = np.arange(1, len(sp) + 1)
+    axs[0, 1].semilogy(x_sp, normalized_sp, '-o', markersize=4, color='red')
+    axs[0, 1].set_ylim(min(normalized_sp), 1.0)
+    axs[0, 1].set_title("Phase Singular Values", fontsize=14)
+    axs[0, 1].set_xlabel("Singular Value Index", fontsize=12)
+    axs[0, 1].set_ylabel("Normalized Singular Value", fontsize=12)
+    axs[0, 1].grid(True, which="both", ls="--")
+
+    # Cumulative sum (Phase)
+    cumsum_sp = np.cumsum(sp) / np.sum(sp)
+    axs[1, 1].plot(x_sp, cumsum_sp, '-o', markersize=4, color='red')
+    axs[1, 1].set_ylim(0, 1.05)
+    axs[1, 1].set_title("Cumulative Sum (Phase)", fontsize=14)
+    axs[1, 1].set_xlabel("Singular Value Index", fontsize=12)
+    axs[1, 1].set_ylabel("Cumulative Energy", fontsize=12)
+    axs[1, 1].grid(True, which="both", ls="--")
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f"{args.results_dir}/singular_value_analysis.pdf", dpi=300)
+    plt.show()
+
+
+plot_normalized_singular_values(sa, sp)
 
 rank_a = 100
 rank_p = 100
@@ -461,7 +525,7 @@ print("\nValidating model with a test waveform...")
 # test_params = {'q': 4.5, 'chi': 0.45}
 test_params = {'q': 1.23, 'chi': -0.7}
 
-true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t)
+true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, window_type='planck')
 mask = (true_freqs >= f_min_grid) & (true_freqs <= f_max_grid)
 true_freqs_masked = true_freqs[mask]
 true_h_fd_masked = true_h_fd[mask]
