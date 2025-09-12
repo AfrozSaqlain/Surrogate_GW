@@ -23,7 +23,7 @@ if args.results_dir != 'Results' and not os.path.exists(args.results_dir):
 # ## Setup and Helper Functions
 # -----------------------------------------------------------------------------
 LALSIMULATION_RINGING_EXTENT = 19
-def Planck_window_LAL(data, taper_method='LAL_SIM_INSPIRAL_TAPER_STARTEND', num_extrema_start=2, num_extrema_end=2):
+def Planck_window_LAL(data, taper_method='LAL_SIM_INSPIRAL_TAPER_STARTEND', num_extrema_start=32, num_extrema_end=32):
     """
     Parameters:
     -----------
@@ -253,7 +253,7 @@ def generate_sparse_grid(f_min, f_max, num_points, power=4/3):
 print("Step I: Generating training data...")
 
 q_vals = np.linspace(1, 10, 30)
-chi_vals = np.linspace(-0.8, 0.6, 30)
+chi_vals = np.linspace(-1.0, 1.0, 30)
 param_grid_q, param_grid_chi = np.meshgrid(q_vals, chi_vals)
 params_list = [{'q': q, 'chi': chi} for q, chi in zip(param_grid_q.flatten(), param_grid_chi.flatten())]
 
@@ -263,6 +263,8 @@ f_max_grid = 1024.0
 delta_t = 1/4096
 # nfft = 16 * 4096
 
+window_type = "planck"  # Options: "tukey", "planck", "lal_planck", or None
+
 raw_amps = []
 raw_phases = []
 raw_freqs = []
@@ -270,7 +272,7 @@ amp_norms = []
 valid_params = []
 
 for params in params_list:
-    freqs, h_fd = generate_fd_waveform(params, f_lower, delta_t, window_type='planck')
+    freqs, h_fd = generate_fd_waveform(params, f_lower, delta_t, window_type=window_type)
     if freqs is None: continue
 
     mask = (freqs >= f_min_grid) & (freqs <= f_max_grid)
@@ -413,8 +415,8 @@ def plot_normalized_singular_values(sa, sp):
 
 plot_normalized_singular_values(sa, sp)
 
-rank_a = 100
-rank_p = 100
+rank_a = 75
+rank_p = 75
 
 B_a = Ua[:, :rank_a] 
 B_p = Up[:, :rank_p] 
@@ -488,6 +490,46 @@ plt.savefig(f"{args.results_dir}/projection_coefficients.pdf", dpi=300)
 plt.show()
 
 # -----------------------------------------------------------------------------
+# ## Plotting the normalization factor variation
+# -----------------------------------------------------------------------------
+def plot_normalization_factor(amp_norms_grid, q_unique, chi_unique):
+    """
+    Plots the variation of the normalization factor across the parameter space.
+
+    Parameters:
+    -----------
+    amp_norms_grid : 2D numpy array
+        A grid of the normalization factors.
+    q_unique : 1D numpy array
+        The unique values for the mass ratio q.
+    chi_unique : 1D numpy array
+        The unique values for the spin parameter chi.
+    """
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Create a meshgrid for plotting
+    Q, Chi = np.meshgrid(q_unique, chi_unique)
+
+    # Create the surface plot
+    surf = ax.plot_surface(Q, Chi, amp_norms_grid, cmap="viridis", edgecolor="none")
+    ax.set_title("Variation of Waveform Normalization Factor", fontsize=16)
+    ax.set_xlabel("Mass ratio q", fontsize=12)
+    ax.set_ylabel(r"Spin $\chi$", fontsize=12)
+    ax.set_zlabel("Normalization Factor (Norm)", fontsize=12)
+    ax.zaxis.labelpad = 15
+
+    # Add a color bar
+    fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, pad=0.1)
+
+    plt.tight_layout()
+    plt.savefig(f"{args.results_dir}/normalization_factor_variation.pdf", dpi=300)
+    plt.show()
+
+print("Plotting the variation of the normalization factor...")
+plot_normalization_factor(amp_norms_grid, q_unique, chi_unique)
+
+# -----------------------------------------------------------------------------
 # ## Step V: Assemble and Evaluate the Surrogate Model
 # -----------------------------------------------------------------------------
 print("Step V: Assembling the surrogate model evaluator.")
@@ -521,11 +563,11 @@ print("\nValidating model with a test waveform...")
 # -----------------------------------------------------------------------------
 # ## Run a test case to validate the surrogate model
 # -----------------------------------------------------------------------------
-# test_params = {'q': 8.23, 'chi': -0.5}
+test_params = {'q': 8.23, 'chi': -0.5}
 # test_params = {'q': 4.5, 'chi': 0.45}
-test_params = {'q': 1.23, 'chi': -0.7}
+# test_params = {'q': 1.23, 'chi': -0.7}
 
-true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, window_type='planck')
+true_freqs, true_h_fd = generate_fd_waveform(test_params, f_lower, delta_t, window_type=window_type)
 mask = (true_freqs >= f_min_grid) & (true_freqs <= f_max_grid)
 true_freqs_masked = true_freqs[mask]
 true_h_fd_masked = true_h_fd[mask]
@@ -581,7 +623,7 @@ print(f"Mismatch between surrogate model and true model = {mismatch:.3e}")
 # ## Plot the results
 # -----------------------------------------------------------------------------
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig(f'{args.results_dir}/Surrogate_Model_vs_True_Model_3.pdf')
+plt.savefig(f'{args.results_dir}/Surrogate_Model_vs_True_Model_1.pdf')
 plt.show()
 
 # -----------------------------------------------------------------------------
