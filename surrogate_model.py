@@ -308,7 +308,7 @@ print("Step II: Creating sparse grids and interpolating...")
 
 # Higher power corresponds to finer spacing at low frequencies and 
 # low power corresponds to finer spacing at high frequencies.
-sparse_freq_amp = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=0.3) 
+sparse_freq_amp = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=1) 
 sparse_freq_phase = generate_sparse_grid(f_min_grid, f_max_grid, num_points=200, power=4/3)
 
 A_mat = np.zeros((len(sparse_freq_amp), len(raw_amps)))
@@ -415,8 +415,8 @@ def plot_normalized_singular_values(sa, sp):
 
 plot_normalized_singular_values(sa, sp)
 
-rank_a = 75
-rank_p = 75
+rank_a = 100
+rank_p = 100
 
 B_a = Ua[:, :rank_a] 
 B_p = Up[:, :rank_p] 
